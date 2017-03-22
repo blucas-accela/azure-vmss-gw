@@ -1,0 +1,46 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"storageKey": {
+            "reference": {
+                "keyVault": {
+                    "id": "/subscriptions/685af3fa-5a9b-4ee2-ba0b-5dbb568187c2/resourceGroups/OraclePremiumStorage-EC/providers/Microsoft.KeyVault/vaults/accelaec2keyvault"
+                    },
+                "secretName": "accelaec2storagekey"
+                }
+        },
+        "vmSku": {
+            "value": "Standard_A4m_v2"
+        },
+        "dataDiskURI": {
+            "value": "https://accelaec2storepremlrs.blob.core.windows.net/vhdtemplates/903-AA-disk.vhd"
+        },
+        "existingVirtualNetworkName": {
+            "value": "EC-DR-VNET1"
+        },
+        "existingVirtualNetworkResourceGroup": {
+            "value": "OraclePremiumStorage-EC"
+        },
+        "subnetName": {
+            "value": "EC-DR-Subnet1"
+        },
+        "vmssName": {
+            "value": "VMSS903"
+        },
+        "instanceCount": {
+            "value": "2"
+        },
+        "adminUsername": {
+            "value": "accelaops"
+        },
+        "adminPassword": {
+            "reference": {
+                "keyVault": {
+                    "id": "/subscriptions/685af3fa-5a9b-4ee2-ba0b-5dbb568187c2/resourceGroups/OraclePremiumStorage-EC/providers/Microsoft.KeyVault/vaults/accelaec2keyvault"
+                    },
+                "secretName": "newAdminPassword"
+            }
+        }
+	}
+}
