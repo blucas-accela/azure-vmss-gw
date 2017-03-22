@@ -4,35 +4,36 @@
     "parameters": {
         "vmSku": {
             "type": "string",
-            "defaultValue": "Standard_A4m_v2",
             "metadata": {
                 "description": "Size of VMs in the VM Scale Set."
             }
         },
         "dataDiskURI": {
-        "type": "string",
-        "defaultValue": "https://accelaec2storepremlrs.blob.core.windows.net/vhdtemplates/903-AA-disk.vhd",
-        "metadata": {
-        "description": "Uri of the existing data disk VHD in ARM standard or premium storage"
-          }
+            "type": "string",
+            "metadata": {
+                "description": "Uri of the existing data disk VHD in ARM standard or premium storage"
+            }
+        },
+        "storageKey": {
+            "type": "securestring"
         },
         "existingVirtualNetworkName": {
-        "type": "string",
-        "metadata": {
-            "description": "Name of the existing VNET"
-            }
+            "type": "string",
+            "metadata": {
+                "description": "Name of the existing VNET"
+                }
         },
         "existingVirtualNetworkResourceGroup": {
-        "type": "string",
-        "metadata": {
-            "description": "Name of the existing VNET resource group"
-           }
+            "type": "string",
+            "metadata": {
+                "description": "Name of the existing VNET resource group"
+            }
         },
         "subnetName": {
-        "type": "string",
-        "metadata": {
-            "description": "Name of the subnet in the virtual network you want to use"
-            }
+            "type": "string",
+            "metadata": {
+                "description": "Name of the subnet in the virtual network you want to use"
+                }
         },
         "vmssName": {
             "type": "string",
@@ -56,9 +57,6 @@
         },
         "adminPassword": {
             "type": "securestring",
-            "metadata": {
-                "description": "Admin password on all VMs."
-            }
         }
     },
     "variables": {
@@ -67,7 +65,7 @@
         "subnetRef": "[concat(variables('vnetID'),'/subnets/', parameters('subnetName'))]",
         "longNamingInfix": "[toLower(parameters('vmssName'))]",
         "dataDiskUrl": "[parameters(dataDiskURI)]",
-        "dataDiskVhdName": "[concat('https://accelaec2storepremlrs.blob.core.windows.net/vhds/903-AA-disk-',variables('namingInfix'),'.vhd')]", //need to concat vmname to it
+        "dataDiskVhdName": "[concat('https://accelaec2storepremlrs.blob.core.windows.net/vhds/903-AA-disk-',variables('namingInfix'),'.vhd')]", 
         "publicIPAddressName": "[concat(variables('namingInfix'), 'pip')]",
         "nicName": "[concat(variables('namingInfix'), 'nic')]",
         "ipConfigName": "[concat(variables('namingInfix'), 'ipconfig')]",
