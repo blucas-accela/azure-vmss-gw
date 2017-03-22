@@ -1,0 +1,269 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01-preview/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmSku": {
+            "type": "string",
+            "defaultValue": "Standard_A4m_v2",
+            "metadata": {
+                "description": "Size of VMs in the VM Scale Set."
+            }
+        },
+        "dataDiskURI": {
+        "type": "string",
+        "defaultValue": "https://accelaec2storepremlrs.blob.core.windows.net/vhdtemplates/903-AA-disk.vhd",
+        "metadata": {
+        "description": "Uri of the existing data disk VHD in ARM standard or premium storage"
+          }
+        },
+        "existingVirtualNetworkName": {
+        "type": "string",
+        "metadata": {
+            "description": "Name of the existing VNET"
+            }
+        },
+        "existingVirtualNetworkResourceGroup": {
+        "type": "string",
+        "metadata": {
+            "description": "Name of the existing VNET resource group"
+           }
+        },
+        "subnetName": {
+        "type": "string",
+        "metadata": {
+            "description": "Name of the subnet in the virtual network you want to use"
+            }
+        },
+        "vmssName": {
+            "type": "string",
+            "metadata": {
+                "description": "String used as a base for naming resources. Must be 3-57 characters in length and globally unique across Azure. A hash is prepended to this string for some resources, and resource-specific information is appended."
+            },
+            "maxLength": 57
+        },
+        "instanceCount": {
+            "type": "int",
+            "metadata": {
+                "description": "Number of VM instances (1000 or less)."
+            },
+            "maxValue": 1000
+        },
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Admin username on all VMs."
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Admin password on all VMs."
+            }
+        }
+    },
+    "variables": {
+        "namingInfix": "[toLower(substring(concat(parameters('vmssName'), uniqueString(resourceGroup().id)), 0, 9))]",
+        "vnetID": "[resourceId(parameters('existingVirtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('existingVirtualNetworkName'))]",
+        "subnetRef": "[concat(variables('vnetID'),'/subnets/', parameters('subnetName'))]",
+        "longNamingInfix": "[toLower(parameters('vmssName'))]",
+        "dataDiskUrl": "[parameters(dataDiskURI)]",
+        "dataDiskVhdName": "[concat('https://accelaec2storepremlrs.blob.core.windows.net/vhds/903-AA-disk-',variables('namingInfix'),'.vhd')]", //need to concat vmname to it
+        "publicIPAddressName": "[concat(variables('namingInfix'), 'pip')]",
+        "nicName": "[concat(variables('namingInfix'), 'nic')]",
+        "ipConfigName": "[concat(variables('namingInfix'), 'ipconfig')]",
+        "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "latest"
+        },
+        "appGwPublicIPAddressName": "[concat(variables('namingInfix'), 'appGwPip')]",
+        "appGwName": "[concat(variables('namingInfix'), 'appGw')]",
+        "appGwPublicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',variables('appGwPublicIPAddressName'))]",
+        "appGwID": "[resourceId('Microsoft.Network/applicationGateways',variables('appGwName'))]",
+        "appGwSubnetName": "[concat(variables('namingInfix'),'appGwSubnet')]",
+        "appGwSubnetPrefix": "10.0.1.0/24",
+        "appGwSubnetID": "[concat(variables('vnetID'),'/subnets/',variables('appGwSubnetName'))]",
+        "appGwFrontendPort": 80,
+        "appGwBackendPort": 80,
+        "appGwBePoolName": "[concat(variables('namingInfix'), 'appGwBepool')]",
+        "computeApiVersion": "2016-04-30-preview",
+        "networkApiVersion": "2016-03-30"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "name": "[variables('appGwPublicIPAddressName')]",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "[variables('networkApiVersion')]",
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "type": "Microsoft.Network/applicationGateways",
+            "name": "[variables('appGwName')]",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "[variables('networkApiVersion')]",
+            "dependsOn": [
+ //              "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+                "[concat('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIPAddressName'))]"
+            ],
+            "properties": {
+                "sku": {
+                    "name": "Standard_Small",
+                    "tier": "Standard",
+                    "capacity": "5"
+                },
+                "gatewayIPConfigurations": [
+                    {
+                        "name": "appGwIpConfig",
+                        "properties": {
+                            "subnet": {
+                                "id": "[variables('appGwSubnetID')]"
+                            }
+                        }
+                    }
+                ],
+                "frontendIPConfigurations": [
+                    {
+                        "name": "appGwFrontendIP",
+                        "properties": {
+                            "PublicIPAddress": {
+                                "id": "[variables('appGwPublicIPAddressID')]"
+                            }
+                        }
+                    }
+                ],
+                "frontendPorts": [
+                    {
+                        "name": "appGwFrontendPort",
+                        "properties": {
+                            "Port": "[variables('appGwFrontendPort')]"
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "[variables('appGwBePoolName')]"
+                    }
+                ],
+                "backendHttpSettingsCollection": [
+                    {
+                        "name": "appGwBackendHttpSettings",
+                        "properties": {
+                            "Port": "[variables('appGwBackendPort')]",
+                            "Protocol": "Http",
+                            "CookieBasedAffinity": "Disabled"
+                        }
+                    }
+                ],
+                "httpListeners": [
+                    {
+                        "name": "appGwHttpListener",
+                        "properties": {
+                            "FrontendIPConfiguration": {
+                                "Id": "[concat(variables('appGwID'), '/frontendIPConfigurations/appGwFrontendIP')]"
+                            },
+                            "FrontendPort": {
+                                "Id": "[concat(variables('appGwID'), '/frontendPorts/appGwFrontendPort')]"
+                            },
+                            "Protocol": "Http",
+                            "SslCertificate": null
+                        }
+                    }
+                ],
+                "requestRoutingRules": [
+                    {
+                        "Name": "rule1",
+                        "properties": {
+                            "RuleType": "Basic",
+                            "httpListener": {
+                                "id": "[concat(variables('appGwID'), '/httpListeners/appGwHttpListener')]"
+                            },
+                            "backendAddressPool": {
+                                "id": "[concat(variables('appGwID'), '/backendAddressPools/', variables('appGwBePoolName'))]"
+                            },
+                            "backendHttpSettings": {
+                                "id": "[concat(variables('appGwID'), '/backendHttpSettingsCollection/appGwBackendHttpSettings')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachineScaleSets",
+            "name": "[variables('namingInfix')]",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "[variables('computeApiVersion')]",
+            "dependsOn": [
+//                "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+                "[concat('Microsoft.Network/applicationGateways/', variables('appGwName'))]"
+            ],
+            "sku": {
+                "name": "[parameters('vmSku')]",
+                "tier": "Standard",
+                "capacity": "[parameters('instanceCount')]"
+            },
+            "properties": {
+                "overprovision": "true",
+                "singlePlacementGroup": "false",
+                "upgradePolicy": {
+                    "mode": "Automatic"
+                },
+                "virtualMachineProfile": {
+                    "storageProfile": {
+                        "osDisk": {
+                            "caching": "ReadOnly",
+                            "createOption": "FromImage"
+                        },
+                        "imageReference": "[variables('imageReference')]",
+                        "dataDisks": [
+                            {
+                               "lun": "0",
+                               "createOption": "FromImage",
+                              "image": { // specifies the source location
+                                "uri": "[variables('dataDiskUrl')]"
+                                },
+                              "vhd": { //specifies the new target location
+                                "uri": "[variables('dataDiskVhdName')]"
+                                }                            
+                            }
+                        ]
+                    },
+                    "osProfile": {
+                        "computerNamePrefix": "[variables('namingInfix')]",
+                        "adminUsername": "[parameters('adminUsername')]",
+                        "adminPassword": "[parameters('adminPassword')]"
+                    },
+                    "networkProfile": {
+                        "networkInterfaceConfigurations": [
+                            {
+                                "name": "[variables('nicName')]",
+                                "properties": {
+                                    "primary": "true",
+                                    "ipConfigurations": [
+                                        {
+                                            "name": "[variables('ipConfigName')]",
+                                            "properties": {
+                                                "subnet": {
+                                                    "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', parameters('existingVirtualNetworkName'), '/subnets/', parameters('subnetName'))]"
+                                                },
+                                                "ApplicationGatewayBackendAddressPools": [
+                                                    {
+                                                        "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/applicationGateways/', variables('appGwName'), '/backendAddressPools/', variables('appGwBePoolName'))]"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
