@@ -106,7 +106,6 @@
             "location": "[resourceGroup().location]",
             "apiVersion": "[variables('networkApiVersion')]",
             "dependsOn": [
- //              "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
                 "[concat('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIPAddressName'))]"
             ],
             "properties": {
@@ -198,7 +197,6 @@
             "location": "[resourceGroup().location]",
             "apiVersion": "[variables('computeApiVersion')]",
             "dependsOn": [
-//                "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
                 "[concat('Microsoft.Network/applicationGateways/', variables('appGwName'))]"
             ],
             "sku": {
@@ -223,10 +221,10 @@
                             {
                                "lun": "0",
                                "createOption": "FromImage",
-                              "image": { // specifies the source location
+                              "image": { 
                                 "uri": "[variables('dataDiskUrl')]"
                                 },
-                              "vhd": { //specifies the new target location
+                              "vhd": { 
                                 "uri": "[variables('dataDiskVhdName')]"
                                 }                            
                             }
